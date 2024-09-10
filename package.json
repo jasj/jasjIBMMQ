@@ -1,0 +1,28 @@
+{
+    "name": "jasj-ibm-mq",
+    "version": "1.0.0",
+    "description": "Node.js module for interacting with IBM MQ",
+    "main": "index.js",
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": ["ibm", "mq", "messaging", "queue"],
+    "author": "Juan Andres Segreda Johanning",
+    "license": "MIT",
+    "dependencies": {},
+    "files": [
+      "index.js",
+      "lib/com.ibm.mq.allclient.jar",
+      "lib/MQQueueSender.java",
+      "lib/MQQueueListener.java",
+      "lib/MQMessageProcessor.java"
+    ],
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/jasj/jasjIBMMQ.git"
+    },
+    "bugs": {
+      "url": "https://github.com/jasj/jasjIBMMQ/issues"
+    },
+    "homepage": "https://github.com/jasj/jasjIBMMQ#readme"
+  }
