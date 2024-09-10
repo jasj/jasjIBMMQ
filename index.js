@@ -18,7 +18,7 @@ class ibmJASJMQ {
 
     send(msg) {
         return new Promise((resolve, reject) => {
-            const command = `java -cp ${path.join(__dirname, 'lib', 'com.ibm.mq.allclient.jar')} ${path.join(__dirname, 'lib','MQQueueSender.java')} "${this.manager}" "${this.connName}" "${this.channel}" "${this.queue}" "${this.userId}" "${this.password}" "${msg}"`;
+            const command = `java -cp ${path.join(__dirname, 'lib', 'com.ibm.mq.allclient.jar')} ${path.join(__dirname, 'lib','MQQueueSender.java')} "${this.manager}" "${this.connName}" "${this.channel}" "${this.queue}" "${this.userId}" "${this.password}" '${msg}'`;
 
             exec(command, (error, stdout, stderr) => {
                 if (error) {
