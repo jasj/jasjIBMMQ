@@ -1,6 +1,6 @@
 {
     "name": "jasj-ibm-mq",
-    "version": "1.0.1",
+    "version": "1.0.7",
     "description": "Node.js module for interacting with IBM MQ",
     "main": "index.js",
     "scripts": {

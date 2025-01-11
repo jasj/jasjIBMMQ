@@ -1,8 +1,11 @@
 const { exec, spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs').promises;
+const os = require('os');
+const crypto = require('crypto');
 
 class ibmJASJMQ {
-    constructor({ manager, connName, channel, userId, password, queue }) {
+    constructor({ manager, connName, channel, userId, password, queue, maxReconnectAttempts }) {
         this.manager = manager;
         this.connName = connName;
         this.channel = channel;
@@ -12,13 +15,62 @@ class ibmJASJMQ {
         this.listenerProcess = null;
         this.isReconnecting = false;
         this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 10;
+        this.maxReconnectAttempts = maxReconnectAttempts;
         this.reconnectInterval = 5000; // 5 segundos
     }
 
+    async sendFileContent(msg) {
+        // Crear un nombre de archivo temporal único
+        const tempFileName = path.join(
+            os.tmpdir(),
+            `mq-msg-${Date.now()}-${crypto.randomBytes(16).toString('hex')}.tmp`);
+
+        try {
+            // Escribir el contenido en el archivo temporal
+            await fs.writeFile(tempFileName, msg);
+
+            // Ejecutar el comando usando MQQueueFileSender
+            const command = `java -cp ${path.join(__dirname, 'lib', 'com.ibm.mq.allclient.jar')} ${path.join(__dirname, 'lib', 'MQQueueFileSender.java')} "${this.manager}" "${this.connName}" "${this.channel}" "${this.queue}" "${this.userId}" "${this.password}" "${tempFileName}"`;
+
+            return new Promise((resolve, reject) => {
+                exec(command, async (error, stdout, stderr) => {
+                    try {
+                        // Intentar eliminar el archivo temporal sin importar el resultado
+                        await fs.unlink(tempFileName);
+                    } catch (deleteError) {
+                        console.error(`Error al eliminar archivo temporal: ${deleteError}`);
+                    }
+
+                    if (error) {
+                        console.error(`Error al ejecutar el comando: ${error}`);
+                        reject(false);
+                        return;
+                    }
+                    if (stderr) {
+                        console.error(`Error en la salida estándar: ${stderr}`);
+                        reject(false);
+                        return;
+                    }
+                    resolve(true);
+                });
+            });
+        } catch (error) {
+            // Si ocurre un error al escribir el archivo, intentar eliminarlo
+            try {
+                await fs.unlink(tempFileName);
+            } catch (deleteError) {
+                // Ignorar errores al eliminar si el archivo no existe
+            }
+            throw error;
+        }
+    }
+
     send(msg) {
+        if (msg.length > 64000) {
+            return this.sendFileContent(msg);
+        }
         return new Promise((resolve, reject) => {
-            const command = `java -cp ${path.join(__dirname, 'lib', 'com.ibm.mq.allclient.jar')} ${path.join(__dirname, 'lib','MQQueueSender.java')} "${this.manager}" "${this.connName}" "${this.channel}" "${this.queue}" "${this.userId}" "${this.password}" '${msg}'`;
+            const command = `java -cp ${path.join(__dirname, 'lib', 'com.ibm.mq.allclient.jar')} ${path.join(__dirname, 'lib', 'MQQueueSender.java')} "${this.manager}" "${this.connName}" "${this.channel}" "${this.queue}" "${this.userId}" "${this.password}" '${msg}'`;
 
             exec(command, (error, stdout, stderr) => {
                 if (error) {
@@ -38,10 +90,9 @@ class ibmJASJMQ {
 
     listen(handle) {
         const startListener = () => {
-            console.log("Iniciando listener de MQ...");
             this.listenerProcess = spawn('java', [
                 '-cp', path.join(__dirname, 'lib', 'com.ibm.mq.allclient.jar'),
-                path.join(__dirname, 'lib','MQQueueListener.java'),
+                path.join(__dirname, 'lib', 'MQQueueListener.java'),
                 this.manager, this.connName, this.channel, this.queue, this.userId, this.password
             ]);
 
@@ -55,6 +106,9 @@ class ibmJASJMQ {
                             const messageContent = match[2].trim();
                             handle(messageId, messageContent);
                         }
+                    } else if (line.startsWith("Conexión a MQ establecida")) {
+                        console.log("go to 0")
+                        this.reconnectAttempts = 0
                     }
                 });
             });

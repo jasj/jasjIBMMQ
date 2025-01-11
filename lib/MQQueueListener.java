@@ -22,7 +22,7 @@ public class MQQueueListener {
         String userId = args[4];
         String password = args[5];
 
-        System.out.println("Iniciando conexión a MQ...");
+        System.out.println("Iniciando conexión a MQ");
 
         MQQueueManager qMgrObj = null;
         MQQueue queue = null;
